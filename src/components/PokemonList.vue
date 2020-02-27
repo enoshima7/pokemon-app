@@ -2,12 +2,13 @@
   <div>
     <div class="container d-flex ai-center flex-wrap">
       <div
+        @click="passID(item.id)"
         class="pokemon-item bg-white text-center d-flex flex-column ai-center my-2 ml-4"
-        v-for="(item, index) in pokemons"
-        :key="index"
+        v-for="item in pokemons"
+        :key="item.id"
       >
         <img width="96" height="96" :src="imgURL + item.id + '.png'" alt="" />
-        <span class="pb-2">
+        <span class="pokemon-name pb-2">
           {{ item.name }}
         </span>
       </div>
@@ -27,26 +28,47 @@ export default {
   data() {
     return {
       pokemons: [],
-      currentURL: "",
-      nextURL: "",
+      currentURL: '/',
+      nextURL: '',
       imgURL:
-        "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/"
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/'
     };
   },
+
   methods: {
+    passID(id) {
+      this.$emit('passID', id);
+    },
+    lazyload() {
+      const observer = new IntersectionObserver(entries => {
+        entries.forEach(v => {
+          if (v.intersectionRatio > 0 && this.nextURL) {
+            this.fetchPokemons();
+          }
+        });
+      });
+      observer.observe(this.$refs.scrollTrigger);
+    },
     async fetchPokemons() {
-      const res = await this.$http.get("/");
-      this.pokemons = res.data.results;
+      const res = await this.$http.get(`${this.currentURL}`);
+      this.nextURL = '/' + res.data.next.split('/').pop();
+      res.data.results.map(v => {
+        this.pokemons.push(v);
+      });
       this.pokemons.map(v => {
         v.id = v.url
-          .split("/")
+          .split('/')
           .filter(v => !!v)
           .pop();
       });
+      this.currentURL = this.nextURL;
     }
   },
   created() {
     this.fetchPokemons();
+  },
+  mounted() {
+    this.lazyload();
   }
 };
 </script>
@@ -58,10 +80,19 @@ export default {
     border-radius: 1.3rem;
     box-shadow: 0px 6px 10px -2px rgba(0, 0, 0, 0.24);
     cursor: pointer;
+    transition: 0.3s all ease;
   }
+  .pokemon-item:hover {
+    transform: scale(1.1);
+    box-shadow: 0px 20px 20px -5px rgba(0, 0, 0, 0.75);
+  }
+
   .spinner {
     width: 3.8462rem;
     animation: spin 2000ms infinite linear;
+  }
+  .pokemon-name {
+    text-transform: capitalize;
   }
 }
 </style>
